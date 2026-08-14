@@ -212,6 +212,24 @@
     background:var(--ink); color:#fff; padding:10px 18px; border-radius:10px; font-size:14px;
     opacity:0; transition:opacity .25s; pointer-events:none; max-width:86%}
   .toast.show{opacity:1}
+
+  /* ---- 話者ラベル ---- */
+  .spk{display:block; font-size:12px; font-weight:700; letter-spacing:.06em;
+    color:var(--ink-soft); margin-bottom:2px}
+
+  /* ---- 教員モード ---- */
+  .tovl{position:fixed; inset:0; z-index:90; background:rgba(0,0,0,.35); display:none;
+    align-items:flex-start; justify-content:center; padding:24px 16px; overflow:auto}
+  .tovl.on{display:flex}
+  .tbox{background:#fff; border-radius:16px; padding:20px; width:100%; max-width:560px; margin-bottom:40px}
+  .tbox h2{font-size:17px; margin-bottom:12px}
+  .field{margin-bottom:10px}
+  .field label{display:block; font-size:12.5px; font-weight:700; color:var(--ink-soft); margin-bottom:4px}
+  .field input,.field textarea{width:100%; font-size:16px; padding:10px 12px;
+    border:1.5px solid var(--line); border-radius:10px; background:var(--paper)}
+  .field textarea{min-height:130px; font-family:var(--reading); line-height:1.6}
+  .field input:focus,.field textarea:focus{outline:none; border-color:var(--teal)}
+  .thelp{font-size:12.5px; color:var(--ink-soft); margin-bottom:10px}
 </style>
 </head>
 <body>
@@ -240,6 +258,21 @@
   <div class="pane on" id="pane-hw"><div class="loading">読みこみ中…</div></div>
   <div class="pane" id="pane-read"></div>
   <div class="pane" id="pane-word"></div>
+  <div class="pane" id="pane-teacher"></div>
+</div>
+
+<!-- ===== 教員:編集フォーム ===== -->
+<div class="tovl" id="tEdit">
+  <div class="tbox">
+    <h2 id="tTitle"></h2>
+    <p class="thelp" id="tHelp"></p>
+    <div id="tFields"></div>
+    <div class="sub-row">
+      <button class="ghost" id="tDel" style="border-color:var(--miss); color:var(--miss)">削除</button>
+      <button class="ghost" id="tCancel">とじる</button>
+      <button class="big" id="tSave">保存</button>
+    </div>
+  </div>
 </div>
 
 <!-- ===== 音読 ===== -->
@@ -271,6 +304,10 @@
     </div>
   </div>
   <div id="recPane">
+    <div class="tabs" style="margin-bottom:8px">
+      <button id="scopeSent" class="on">1文ずつ</button>
+      <button id="scopeAll">全文まとめて</button>
+    </div>
     <p class="note" id="recNote"></p>
     <div class="row">
       <button class="big" id="micBtn" disabled>🎤 マイクをおして読む</button>
@@ -278,6 +315,9 @@
     </div>
     <div class="row" id="submitRow" style="display:none; margin-top:10px">
       <button class="big sub" id="submitBtn" disabled>📌 宿題として提出</button>
+    </div>
+    <div class="row" id="audioRow" style="display:none; margin-top:10px">
+      <button class="big" id="audioBtn" style="background:#5A4FA0">🎙 声を録音して提出</button>
     </div>
     <div id="interim"></div>
   </div>
@@ -394,7 +434,7 @@
 /* ★外部ホスティング(GitHub Pages等)で使う場合のみ、GASのウェブアプリURLを設定★
    例: const GAS_URL = 'https://script.google.com/macros/s/XXXX/exec';
    GAS内にそのまま貼って使う場合は空のままでOK */
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbxqakFpiBDrD11YB4Bk0Fp40IXrXJUu3V0tOk-Shz0iGehLJOEXGBFKaBizdK_VCtiGCg/exec';
+const GAS_URL = '';
 
 /* ================= 共通 ================= */
 const $ = id => document.getElementById(id);
@@ -412,8 +452,22 @@ function esc(s){ const d=document.createElement('div'); d.textContent=s; return 
 function norm(w){ return String(w).toLowerCase().replace(/[’]/g,"'").replace(/[^a-z0-9']/g,''); }
 function shuffle(a){ a=a.slice(); for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]];} return a; }
 function splitSents(text){
-  const m = text.replace(/\s+/g,' ').trim().match(/[^.!?]+[.!?]+["'’”)]*|[^.!?]+$/g);
-  return (m||[]).map(s=>s.trim()).filter(Boolean);
+  const guard = String(text).replace(/\b(Mr|Mrs|Ms|Dr|St|Mt)\./g,'$1__DOT__');
+  const m = guard.replace(/\s+/g,' ').trim().match(/[^.!?]+[.!?]+["'’”)]*|[^.!?]+$/g);
+  return (m||[]).map(s=>s.replace(/__DOT__/g,'.').trim()).filter(Boolean);
+}
+/* 改行区切りの本文を解析。「Boy: Hi.」形式の話者ラベルは表示のみ(読み上げ・採点から除外) */
+function parseLines(text, jpList){
+  const lines = String(text).split(/\n+/).map(l=>l.trim()).filter(Boolean);
+  const out=[];
+  lines.forEach(line=>{
+    let spk='', body=line;
+    const m = line.match(/^([A-Za-z][A-Za-z.'’ ]{0,24}?)\s*[::]\s+(.+)$/);
+    if(m){ spk=m[1].trim(); body=m[2]; }
+    splitSents(body).forEach(en=>out.push({en, spk, words:en.split(/\s+/)}));
+  });
+  out.forEach((s,i)=>{ s.jp = jpList[i]||''; });
+  return out;
 }
 function show(id){
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
@@ -852,12 +906,12 @@ let rec=null, recOn=false, oralScores={};
 
 function openPassage(p, task){
   curP=p; currentTask=task||null; oralScores={};
-  const enList = splitSents(p.text);
   const jpList = p.translation ? p.translation.split('/').map(s=>s.trim()) : [];
-  sents = enList.map((en,i)=>({en, jp: jpList[i]||'', words: en.split(/\s+/)}));
+  sents = parseLines(p.text, jpList);
   $('rTitle').textContent = p.title;
   $('sents').innerHTML = sents.map((s,i)=>`
     <div class="sent" data-i="${i}">
+      ${s.spk?`<span class="spk">${esc(s.spk)}</span>`:''}
       <p class="en">${s.words.map((w,j)=>`<span class="w" data-j="${j}">${esc(w)}</span>`).join(' ')}</p>
       <button class="play1">▶</button>
       <p class="score"></p><p class="jp">${esc(s.jp)}</p>
@@ -873,6 +927,7 @@ function openPassage(p, task){
     el.onclick = ()=>{ mode==='read' ? pick(i) : playOne(i); };
   });
   $('submitRow').style.display = currentTask ? 'flex' : 'none';
+  $('audioRow').style.display = currentTask ? 'flex' : 'none';
   updateSubmit();
   setReadMode(currentTask ? 'read' : 'listen');
   show('readView');
@@ -921,15 +976,36 @@ function setReadMode(m){
   $('tabRead').classList.toggle('on',m==='read');
   $('listenPane').style.display = m==='listen'?'block':'none';
   $('recPane').style.display = m==='read'?'block':'none';
-  if(m==='listen') unpick();
-  $('hint').textContent = m==='read'
-    ? '読みたい文をタップして選び、マイクをおして音読しよう。'
-    : '文をタップすると読み上げ。単語をタップするとその単語だけ発音します。';
+  if(m==='listen'){
+    unpick();
+    $('hint').textContent = '文をタップすると読み上げ。単語をタップするとその単語だけ発音します。';
+  }else{
+    setScope(oralScope);
+  }
 }
 $('tabListen').onclick=()=>setReadMode('listen');
 $('tabRead').onclick=()=>setReadMode('read');
 
+let oralScope = 'sent'; // 'sent'=1文ずつ / 'all'=全文まとめて
+$('scopeSent').onclick = ()=>setScope('sent');
+$('scopeAll').onclick = ()=>setScope('all');
+function setScope(s){
+  oralScope = s; stopRec();
+  $('scopeSent').classList.toggle('on', s==='sent');
+  $('scopeAll').classList.toggle('on', s==='all');
+  if(s==='all'){
+    unpick();
+    $('micBtn').disabled = false;
+    $('recNote').textContent = 'マイクをおして、さいしょから最後まで通して読もう。読み終わったらもう一度おして終了。';
+    $('hint').textContent = '全文まとめてモード:マイクをおして通し読み。終了すると文ごとに採点されます。';
+  }else{
+    unpick();
+    $('hint').textContent = '読みたい文をタップして選び、マイクをおして音読しよう。';
+  }
+}
+
 function pick(i){
+  if(oralScope==='all') return;
   pickedIdx=i;
   $('sents').querySelectorAll('.sent').forEach(el=>el.classList.toggle('picked',+el.dataset.i===i));
   $('micBtn').disabled=false;
@@ -938,6 +1014,7 @@ function pick(i){
 function unpick(){
   pickedIdx=-1;
   $('sents').querySelectorAll('.sent').forEach(el=>el.classList.remove('picked'));
+  if(oralScope==='all'){ $('micBtn').disabled=false; return; }
   $('micBtn').disabled=true;
   $('recNote').textContent='読みたい文をタップしてから、マイクをおして英語で読もう。';
 }
@@ -949,9 +1026,10 @@ function getRec(){
   return r;
 }
 function startRec(){
-  if(pickedIdx<0) return;
+  if(oralScope==='sent' && pickedIdx<0) return;
   rec=getRec();
   if(!rec){ toast('この端末・ブラウザでは音声認識が使えません(Safari推奨)'); return; }
+  rec.continuous = (oralScope==='all');
   stopAll();
   let finalText='';
   rec.onresult = e=>{
@@ -975,7 +1053,9 @@ function startRec(){
   };
   rec.onend = ()=>{
     recOn=false; updateMic();
-    if(finalText.trim() && pickedIdx>=0) grade(pickedIdx, finalText);
+    if(!finalText.trim()) return;
+    if(oralScope==='all') gradeAll(finalText);
+    else if(pickedIdx>=0) grade(pickedIdx, finalText);
   };
   try{ rec.start(); recOn=true; updateMic(); $('interim').textContent=''; }
   catch(e){ toast('マイクを起動できませんでした'); }
@@ -994,33 +1074,105 @@ $('clearBtn').onclick = ()=>{
   oralScores={}; updateSubmit();
 };
 
-function grade(i, spokenText){
-  const target=sents[i].words.map(norm);
-  const spoken=spokenText.trim().split(/\s+/).map(norm).filter(Boolean);
-  const n=target.length, m=spoken.length;
+/* 数字→英単語(音声認識が "three dollars"→"$3" 等に直すのを吸収する) */
+const N1=['zero','one','two','three','four','five','six','seven','eight','nine','ten','eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen'];
+const N10=['','','twenty','thirty','forty','fifty','sixty','seventy','eighty','ninety'];
+function numWords(n){
+  if(n<0||n>9999||isNaN(n)) return [String(n)];
+  if(n<20) return [N1[n]];
+  if(n<100){ const o=[N10[Math.floor(n/10)]]; if(n%10) o.push(N1[n%10]); return o; }
+  if(n<1000){ const o=[N1[Math.floor(n/100)],'hundred']; if(n%100) o.push(...numWords(n%100)); return o; }
+  const o=[...numWords(Math.floor(n/1000)),'thousand']; if(n%1000) o.push(...numWords(n%1000)); return o;
+}
+/* 1単語 → 正規化トークン列(通貨・%・数字を展開) */
+function tokensOf(word){
+  let w = String(word).replace(/[’]/g,"'")
+    .replace(/\$\s?([\d,]+(?:\.\d+)?)/g,'$1 dollars')
+    .replace(/£\s?([\d,]+(?:\.\d+)?)/g,'$1 pounds')
+    .replace(/€\s?([\d,]+(?:\.\d+)?)/g,'$1 euros')
+    .replace(/[¥￥]\s?([\d,]+(?:\.\d+)?)/g,'$1 yen')
+    .replace(/([\d,]+(?:\.\d+)?)\s?%/g,'$1 percent')
+    .replace(/(\d)\.(\d)/g,'$1 point $2')
+    .replace(/,(?=\d)/g,'');
+  const out=[];
+  w.split(/\s+/).forEach(p=>{
+    const t=norm(p);
+    if(!t) return;
+    if(/^\d+$/.test(t)) out.push(...numWords(parseInt(t,10)));
+    else if(/^\d/.test(t)){ // 3rd, 1st など → 数字部と残りに分割
+      const m=t.match(/^(\d+)(.*)$/);
+      out.push(...numWords(parseInt(m[1],10))); if(m[2]) out.push(m[2]);
+    }
+    else out.push(t);
+  });
+  return out;
+}
+
+function lcsHit(T,S){
+  const n=T.length, m=S.length;
   const dp=Array.from({length:n+1},()=>new Array(m+1).fill(0));
   for(let a=1;a<=n;a++)for(let b=1;b<=m;b++)
-    dp[a][b]=target[a-1]===spoken[b-1]?dp[a-1][b-1]+1:Math.max(dp[a-1][b],dp[a][b-1]);
+    dp[a][b]=T[a-1]===S[b-1]?dp[a-1][b-1]+1:Math.max(dp[a-1][b],dp[a][b-1]);
   const hit=new Array(n).fill(false);
   let a=n,b=m;
   while(a>0&&b>0){
-    if(target[a-1]===spoken[b-1]){ hit[a-1]=true; a--; b--; }
+    if(T[a-1]===S[b-1]){ hit[a-1]=true; a--; b--; }
     else if(dp[a-1][b]>=dp[a][b-1]) a--; else b--;
   }
-  const countable=target.filter(w=>w).length;
-  const good=hit.filter((h,k)=>h&&target[k]).length;
-  const pct=countable?Math.round(good/countable*100):0;
+  return hit;
+}
+function spokenTokens(text){
+  const out=[]; text.trim().split(/\s+/).forEach(w=>out.push(...tokensOf(w))); return out;
+}
+/* 文iに単語マークとスコア表示を反映 */
+function applySent(i, wordHas, wordOk, pct){
   const el=$('sents').querySelector(`.sent[data-i="${i}"]`);
   el.querySelectorAll('.w').forEach(w=>{
     const j=+w.dataset.j; w.classList.remove('ok','miss');
-    if(!target[j]) return;
-    w.classList.add(hit[j]?'ok':'miss');
+    if(!wordHas[j]) return;
+    w.classList.add(wordOk[j]?'ok':'miss');
   });
   const sc=el.querySelector('.score');
   sc.textContent=`一致率 ${pct}%`+(pct>=90?' 🎉':pct>=70?' 👍':' 🔁 赤い単語をもう一度');
   sc.style.color=pct>=70?'var(--ok)':'var(--miss)';
   sc.classList.add('show');
   if(!(i in oralScores) || pct>oralScores[i]) oralScores[i]=pct;
+}
+
+function grade(i, spokenText){
+  const flatT=[], mapT=[];
+  sents[i].words.forEach((w,j)=>{
+    tokensOf(w).forEach(t=>{ flatT.push(t); mapT.push(j); });
+  });
+  const hit=lcsHit(flatT, spokenTokens(spokenText));
+  const pct=flatT.length?Math.round(hit.filter(Boolean).length/flatT.length*100):0;
+  const wordHas=new Array(sents[i].words.length).fill(0);
+  const wordOk=new Array(sents[i].words.length).fill(true);
+  flatT.forEach((t,k)=>{ wordHas[mapT[k]]++; if(!hit[k]) wordOk[mapT[k]]=false; });
+  applySent(i, wordHas, wordOk, pct);
+  updateSubmit();
+}
+
+/* 全文まとめて採点:通し読みを文ごとに振り分けて採点 */
+function gradeAll(spokenText){
+  const flatT=[], mapT=[]; // mapT: [文i, 単語j]
+  sents.forEach((s,i)=>s.words.forEach((w,j)=>{
+    tokensOf(w).forEach(t=>{ flatT.push(t); mapT.push([i,j]); });
+  }));
+  const hit=lcsHit(flatT, spokenTokens(spokenText));
+  const per=sents.map(s=>({has:new Array(s.words.length).fill(0), ok:new Array(s.words.length).fill(true), tok:0, good:0}));
+  flatT.forEach((t,k)=>{
+    const [i,j]=mapT[k]; const p=per[i];
+    p.has[j]++; p.tok++;
+    if(hit[k]) p.good++; else p.ok[j]=false;
+  });
+  per.forEach((p,i)=>{
+    const pct=p.tok?Math.round(p.good/p.tok*100):0;
+    applySent(i, p.has, p.ok, pct);
+  });
+  const total=flatT.length, good=hit.filter(Boolean).length;
+  const overall=total?Math.round(good/total*100):0;
+  toast(`全文の一致率 ${overall}%(文ごとの結果は本文を見てね)`, 3200);
   updateSubmit();
 }
 function updateSubmit(){
@@ -1043,7 +1195,153 @@ $('submitBtn').onclick = ()=>{
   });
 };
 
+/* ================= 教員モード(URLに ?t=パスコード で表示) ================= */
+const TKEY = (()=>{ try{ return new URLSearchParams(location.search).get('t')||''; }catch(e){ return ''; } })();
+const SCHEMA = {
+  '教材':[['タイトル'],['レベル(初級/中級/上級)'],['カテゴリ'],['英文(改行で行分け。「Boy: Hi.」形式で話者ラベル)','ta'],['日本語訳(「/」区切りで文ごと対応・任意)','ta']],
+  '単語帳':[['英語'],['意味'],['種別(単語/熟語)'],['レベル'],['例文(並べかえに使用・任意)','ta'],['セット名']],
+  '宿題':[['課題名'],['タイプ(カード・4択・スペル・並べかえ・音読)'],['対象(セット名か教材タイトル)'],['締切(例 2026/09/01)'],['メモ(任意)']]
+};
+let tSheet='教材', tRow=-1;
+function escA(s){ return esc(s).replace(/"/g,'&quot;'); }
+
+function initTeacher(){
+  if(!TKEY) return;
+  const tb=document.createElement('button');
+  tb.textContent='⚙ 教員';
+  tb.onclick=()=>{
+    document.querySelectorAll('.tabs3 button').forEach(x=>x.classList.toggle('on',x===tb));
+    document.querySelectorAll('.pane').forEach(p=>p.classList.remove('on'));
+    $('pane-teacher').classList.add('on');
+    renderTeacher();
+  };
+  document.querySelector('.tabs3').appendChild(tb);
+}
+function tData(){
+  if(tSheet==='教材') return DATA.passages.map(p=>({id:p.id, v:[p.title,p.level,p.category,p.text,p.translation]}));
+  if(tSheet==='単語帳') return DATA.cards.map(c=>({id:c.id, v:[c.en,c.ja,c.kind,c.level,c.ex,c.set]}));
+  return DATA.homework.map(h=>({id:h.id, v:[h.task,h.type,h.target,h.due,h.memo]}));
+}
+function renderTeacher(){
+  const el=$('pane-teacher');
+  el.innerHTML =
+    '<div class="chips">'+['教材','単語帳','宿題'].map(s=>
+      `<button class="chip ${s===tSheet?'on':''}" data-s="${s}">${s}</button>`).join('')+'</div>'
+    +'<button class="big" id="tAdd" style="width:100%; margin-bottom:12px">＋ '+tSheet+'を追加</button>'
+    +'<div class="cards-grid">'+tData().map(d=>
+      `<button class="item" data-id="${d.id}"><h2 style="font-size:16px">${esc(d.v[0])}</h2>
+       <span class="cat">${esc(String(d.v[1]||''))} ${esc(String(d.v[2]||''))}</span></button>`).join('')+'</div>';
+  el.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{ tSheet=c.dataset.s; renderTeacher(); });
+  el.querySelector('#tAdd').onclick=()=>openEdit(-1);
+  el.querySelectorAll('.item').forEach(b=>b.onclick=()=>openEdit(+b.dataset.id));
+}
+function openEdit(row){
+  tRow=row;
+  const sch=SCHEMA[tSheet];
+  const found = row>=0 ? tData().find(d=>d.id===row) : null;
+  const cur = found ? found.v : sch.map(()=>'');
+  $('tTitle').textContent = tSheet + (row>=0?' を編集':' を追加');
+  $('tHelp').textContent = tSheet==='教材' ? '会話文は1行ずつ改行し、「Meg: Yes, I do.」のように書くと話者名は採点対象外になります。' : '';
+  $('tFields').innerHTML = sch.map((f,i)=>
+    `<div class="field"><label>${esc(f[0])}</label>`+
+    (f[1]==='ta'
+      ? `<textarea data-i="${i}">${esc(String(cur[i]||''))}</textarea>`
+      : `<input data-i="${i}" value="${escA(String(cur[i]||''))}">`)
+    +`</div>`).join('');
+  $('tDel').style.display = row>=0?'block':'none';
+  $('tEdit').classList.add('on');
+}
+$('tCancel').onclick=()=>$('tEdit').classList.remove('on');
+$('tSave').onclick=()=>{
+  const vals=[...$('tFields').querySelectorAll('[data-i]')].map(x=>x.value);
+  if(!vals[0].trim()){ toast('1つ目の項目は必須です'); return; }
+  $('tSave').disabled=true;
+  apiTeacher({action:'teacher', key:TKEY, sheet:tSheet, row:tRow, values:vals}, (ok,err)=>{
+    $('tSave').disabled=false;
+    if(ok){ $('tEdit').classList.remove('on'); toast('✓ 保存しました'); load(); }
+    else toast(err||'保存に失敗しました', 3000);
+  });
+};
+$('tDel').onclick=()=>{
+  if(!confirm('この行を削除しますか?')) return;
+  $('tDel').disabled=true;
+  apiTeacher({action:'teacher', key:TKEY, sheet:tSheet, row:tRow, del:true}, (ok,err)=>{
+    $('tDel').disabled=false;
+    if(ok){ $('tEdit').classList.remove('on'); toast('削除しました'); load(); }
+    else toast(err||'削除に失敗しました', 3000);
+  });
+};
+function apiTeacher(p, done){
+  if(window.google && google.script && google.script.run){
+    google.script.run
+      .withSuccessHandler(r=>done(r&&r.ok, r&&r.error))
+      .withFailureHandler(()=>done(false))
+      .teacherApply(p);
+  }else if(GAS_URL){
+    fetch(GAS_URL,{method:'POST', body:JSON.stringify(p)})
+      .then(r=>r.json()).then(d=>done(d&&d.ok, d&&d.error)).catch(()=>done(false));
+  }else done(true);
+}
+
+/* ================= 音声の録音提出(Google Driveへ) ================= */
+let mRec=null;
+$('audioBtn').onclick = ()=>{
+  if(mRec && mRec.state==='recording'){ mRec.stop(); return; }
+  if(!navigator.mediaDevices || !window.MediaRecorder){ toast('この端末では録音ができません'); return; }
+  stopAll(); stopRec();
+  navigator.mediaDevices.getUserMedia({audio:true}).then(stream=>{
+    let mime='';
+    if(MediaRecorder.isTypeSupported){
+      if(MediaRecorder.isTypeSupported('audio/mp4')) mime='audio/mp4';
+      else if(MediaRecorder.isTypeSupported('audio/webm')) mime='audio/webm';
+    }
+    const chunks=[];
+    mRec = mime ? new MediaRecorder(stream,{mimeType:mime}) : new MediaRecorder(stream);
+    mRec.ondataavailable = e=>{ if(e.data && e.data.size) chunks.push(e.data); };
+    mRec.onstop = ()=>{
+      stream.getTracks().forEach(t=>t.stop());
+      $('audioBtn').textContent='🎙 声を録音して提出';
+      const blob=new Blob(chunks,{type:mRec.mimeType||mime||'audio/mp4'});
+      mRec=null;
+      if(blob.size<2000){ toast('録音が短すぎます。もう一度どうぞ'); return; }
+      if(blob.size>8*1024*1024){ toast('録音が長すぎます(目安2分まで)'); return; }
+      uploadAudio(blob);
+    };
+    mRec.start();
+    $('audioBtn').textContent='■ 録音中… おして終了して提出';
+    toast('録音中。さいしょから読んで、終わったらもう一度ボタン',3000);
+  }).catch(()=>toast('マイクを使えませんでした。許可を確認してください',3000));
+};
+function uploadAudio(blob){
+  const fr=new FileReader();
+  fr.onload=()=>{
+    const b64=String(fr.result).split(',')[1];
+    const keys=Object.keys(oralScores);
+    const avg=keys.length?Math.round(keys.reduce((s,k)=>s+oralScores[k],0)/keys.length):0;
+    toast('アップロード中…',5000);
+    const p={action:'audio', name:NAME,
+      task: currentTask?currentTask.task:'自由練習',
+      target: curP?curP.title:'',
+      score: avg,
+      detail: keys.length?`${keys.length}/${sents.length}文チェック済み`:'音声のみ',
+      mime: blob.type, data: b64};
+    const done=ok=>{
+      if(ok){
+        toast('✓ 音声を提出しました'+(avg?`(一致率 平均${avg}%)`:''),3200);
+        if(currentTask){ DATA.records.push({task:currentTask.task,type:'音読(音声)',score:avg,date:''}); renderHW(); }
+      }else toast('音声の提出に失敗しました。電波を確認してもう一度',3200);
+    };
+    if(window.google && google.script && google.script.run)
+      google.script.run.withSuccessHandler(r=>done(r&&r.ok)).withFailureHandler(()=>done(false)).saveAudioRec(p);
+    else if(GAS_URL)
+      fetch(GAS_URL,{method:'POST',body:JSON.stringify(p)}).then(r=>r.json()).then(d=>done(d&&d.ok)).catch(()=>done(false));
+    else done(true);
+  };
+  fr.readAsDataURL(blob);
+}
+
 /* ================= 起動 ================= */
+initTeacher();
 initName();
 })();
 </script>
