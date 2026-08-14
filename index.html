@@ -125,6 +125,23 @@
   .followline{font-size:14px; padding:4px 0}
   .copybtn{width:100%; padding:12px; border-radius:12px; border:1.5px solid var(--line);
     font-size:14px; font-weight:700; color:var(--ink-soft); background:#fff; margin-top:10px}
+  /* ---- 個人カルテ・フィード ---- */
+  .stlink{color:var(--teal); font-weight:700; text-decoration:underline; text-underline-offset:2px}
+  .feedline{font-size:13.5px; padding:4px 0; color:var(--ink-soft); border-bottom:1px dashed var(--line)}
+  .feedline b{color:var(--ink)}
+  .alertcard{background:var(--miss-soft); border:1.5px solid #EBC7C2; border-radius:12px;
+    padding:12px 16px; margin-bottom:10px; font-size:14.5px}
+  .heat{display:grid; grid-template-columns:repeat(14,1fr); gap:4px; max-width:420px; margin:8px 0}
+  .heat i{display:block; aspect-ratio:1; border-radius:4px; background:#E7EAE7}
+  .heat i.h1{background:#9ED0C4}
+  .heat i.h2{background:var(--teal)}
+  /* ---- 瞬間英作文 ---- */
+  .inst-ja{background:var(--card); border:1px solid var(--line); border-radius:20px; padding:30px 22px;
+    text-align:center; font-size:24px; font-weight:700; line-height:1.6; margin-bottom:14px}
+  .inst-cd{height:10px; background:#E7EAE7; border-radius:99px; overflow:hidden; margin-bottom:12px}
+  .inst-cd i{display:block; height:100%; background:var(--gold); border-radius:99px}
+  .inst-status{text-align:center; font-size:16px; font-weight:700; min-height:26px; margin-bottom:10px}
+  .inst-status.rec{color:var(--miss)}
 
   /* ---- 本文(音読) ---- */
   .sheet{padding:10px 18px 240px; max-width:760px; margin:0 auto}
@@ -155,6 +172,12 @@
     background:var(--teal-soft); color:var(--teal); font-size:15px; display:flex; align-items:center; justify-content:center}
   .sent .score{margin-top:8px; font-size:14px; font-weight:700; display:none}
   .sent .score.show{display:block}
+  .sent .heard{display:none; margin-top:4px; font-size:13.5px; color:var(--ink-soft); font-style:italic}
+  .sent .heard.show{display:block}
+  #heardAll{display:none; background:#EEF3F1; border:1px dashed var(--line); border-radius:12px;
+    padding:12px 14px; margin-bottom:12px; font-size:14px; color:var(--ink-soft)}
+  #heardAll.show{display:block}
+  #heardAll b{color:var(--ink)}
 
   #ctrl{position:fixed; left:0; right:0; bottom:0; z-index:30; display:none;
     background:rgba(255,255,255,.96); backdrop-filter:blur(10px); border-top:1px solid var(--line);
@@ -368,15 +391,17 @@
   </header>
   <div class="sheet">
     <p class="hint" id="hint"></p>
+    <div id="heardAll"></div>
     <div id="sents"></div>
   </div>
 </div>
 <div id="ctrl">
   <div class="tabs">
-    <button id="tabListen" class="on">🔊 聞く</button>
-    <button id="tabRead">🎤 音読</button>
-    <button id="tabRp">🎭 ロール</button>
-    <button id="tabSh">👥 シャドー</button>
+    <button id="tabListen" class="on">🔊聞く</button>
+    <button id="tabRead">🎤音読</button>
+    <button id="tabCb">🎧くらべ</button>
+    <button id="tabRp">🎭ロール</button>
+    <button id="tabSh">👥シャドー</button>
   </div>
 
   <div class="cpane" id="listenPane" style="display:block">
@@ -409,6 +434,14 @@
       <button class="big pp" id="audioBtn">🎙 声を録音して提出</button>
     </div>
     <div id="interim"></div>
+  </div>
+
+  <div class="cpane" id="cbPane">
+    <p class="note" id="cbNote">文をタップしてえらび、録音。そのあと「お手本 → 自分の声」を聞きくらべよう(耳で発音チェック)。</p>
+    <div class="row">
+      <button class="big pp" id="cbRecBtn" disabled>⏺ 自分の声を録音</button>
+      <button class="ghost" id="cbPlayBtn" disabled>🎧 くらべ再生</button>
+    </div>
   </div>
 
   <div class="cpane" id="rpPane">
@@ -559,6 +592,30 @@
     <div class="sub-row">
       <button class="ghost" id="hwCancel">とじる</button>
       <button class="big" id="hwCreate" disabled>宿題を作成</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 瞬間英作文 ===== -->
+<div class="view" id="instView">
+  <header><button class="back-btn" data-quit>‹ やめる</button><h1>⚡ 瞬間英作文</h1></header>
+  <div class="drill">
+    <div class="progress"><span id="inNum"></span><div class="bar"><i id="inBar"></i></div><span class="task-tag" id="inTask" style="display:none">宿題</span></div>
+    <div class="inst-ja" id="inJa"></div>
+    <div class="inst-cd"><i id="inCd" style="width:100%"></i></div>
+    <div class="inst-status" id="inStatus"></div>
+    <div class="exp-box" id="inAns">
+      <div class="et" id="inAnsT"></div>
+      <div class="ea" id="inAnsA"></div>
+      <div class="eb" id="inAnsB"></div>
+    </div>
+    <div class="sub-row" id="inSelfRow" style="display:none">
+      <button class="big" id="inOk" style="background:var(--ok)">⭕ 言えた</button>
+      <button class="big" id="inNg" style="background:var(--miss)">🔁 まだ</button>
+    </div>
+    <div class="sub-row">
+      <button class="ghost" id="inPass" style="flex:1">パス(答えを見る)</button>
+      <button class="big" id="inNext" style="display:none">つぎへ ›</button>
     </div>
   </div>
 </div>
@@ -835,9 +892,13 @@ function load(){
     mastLoad(DATA.mastery);
     renderHome();
     if($('pane-teacher').classList.contains('on')) renderTeacher();
-    if(!NAME) openGate();
+    if(!NAME){
+      if(TKEY){ NAME='先生'; $('nameChip').textContent='👤 先生(プレビュー)'; }
+      else openGate();
+    }
   }, ()=>{
     $('pane-hw').innerHTML='<div class="empty">読みこめませんでした。再読み込みしてください。</div>';
+    if(TKEY) $('pane-teacher').innerHTML='<div class="empty">読みこめませんでした。再読み込みしてください。</div>';
   });
 }
 
@@ -863,6 +924,8 @@ function renderQ(){
   const wq=qWeakPool();
   let html='';
   if(wq.length) html+=`<button class="weak-btn" id="qWeakGo">🔁 にがて問題を重点れんしゅう(${wq.length}問)</button>`;
+  if(DATA.passages.some(p=>p.translation))
+    html+=`<button class="weak-btn" id="qInstGo" style="background:#EEF0FA; color:var(--purple); border-color:#D6D3EC">⚡ 瞬間英作文(6秒で言えるかチャレンジ)</button>`;
   const sets=[...new Set(DATA.questions.map(q=>q.set))];
   html+='<div class="cards-grid">'+sets.map(s=>{
     const qs=DATA.questions.filter(q=>q.set===s);
@@ -888,6 +951,13 @@ function renderQ(){
   el.innerHTML=html;
   const wg=el.querySelector('#qWeakGo');
   if(wg) wg.onclick=()=>{ currentTask=null; startQDrill(null,true,null); };
+  const ig=el.querySelector('#qInstGo');
+  if(ig) ig.onclick=()=>{
+    currentTask=null;
+    const items=[];
+    DATA.passages.forEach(p=>{ if(p.translation) items.push(...instItemsFromPassage(p)); });
+    startInstant(items, '全教材から', null);
+  };
   el.querySelectorAll('.qs').forEach(b=>b.onclick=()=>{ currentTask=null; startQDrill(b.dataset.s,false,null); });
 }
 
@@ -1058,6 +1128,10 @@ function startHomework(h){
     if(!qs.length){ toast('問題セット「'+h.target+'」が見つかりません(先生に確認してね)'); currentTask=null; return; }
     const mm=(String(h.memo||'').match(/(\d+)\s*分/)||[])[1];
     startQDrill(h.target, false, h, {test:true, minutes:mm?+mm:10});
+  }else if(h.type==='瞬間英作文'){
+    const p=DATA.passages.find(p=>p.title===h.target);
+    if(!p){ toast('教材「'+h.target+'」が見つかりません(先生に確認してね)'); currentTask=null; return; }
+    startInstant(instItemsFromPassage(p), p.title, h);
   }else if(h.type==='ディクテーション'){
     const cs=DATA.cards.filter(c=>c.set===h.target && c.ex && c.ex.split(/\s+/).length>=3);
     if(cs.length){ startDict(cs.map(c=>({en:c.ex, hint:c.en+'('+c.ja+')'})), h.target, h); return; }
@@ -1299,10 +1373,119 @@ $('dCheck').onclick=()=>{
 $('dNext').onclick=()=>{ DK.idx++; drawDict(); };
 $('dIn').addEventListener('keydown', e=>{ if(e.key==='Enter'&&!DK.answered) $('dCheck').click(); });
 
+/* ================= 瞬間英作文(6秒で言う) ================= */
+let IN={list:[], idx:0, good:0, wrong:[], phase:'', timer:null, title:'', answered:false};
+function instItemsFromPassage(p){
+  const jp=p.translation?p.translation.split('/').map(s=>s.trim()):[];
+  return parseLines(p.text, jp).filter(s=>s.jp).map(s=>({ja:s.jp, en:s.en}));
+}
+function startInstant(items, title, task){
+  currentTask = task || currentTask;
+  const ok=(items||[]).filter(x=>x.ja&&x.en);
+  if(!ok.length){ toast('日本語訳つきの文がありません(教材の訳を「/」区切りで入れてね)'); currentTask=null; return; }
+  IN.list=shuffle(ok).slice(0,10);
+  IN.idx=0; IN.good=0; IN.wrong=[]; IN.title=title||'瞬間英作文';
+  lastDrill={mode:'瞬間英作文', items:ok, title:title, task:currentTask, cards:[]};
+  $('inTask').style.display=currentTask?'inline':'none';
+  show('instView'); drawInst();
+}
+function inClearTimer(){ if(IN.timer){ clearInterval(IN.timer); IN.timer=null; } }
+function drawInst(){
+  inClearTimer(); stopAutoRec();
+  if(IN.idx>=IN.list.length){
+    const pct=Math.round(IN.good/IN.list.length*100);
+    showResult(pct, scoreMsg(pct),
+      IN.wrong.map(w=>({en:w.en, ja:w.ja})),
+      '瞬間英作文', IN.title, `${IN.good}/${IN.list.length}文`);
+    return;
+  }
+  IN.answered=false; IN.phase='think';
+  const it=IN.list[IN.idx];
+  $('inNum').textContent=`${IN.idx+1} / ${IN.list.length}`;
+  $('inBar').style.width=(IN.idx/IN.list.length*100)+'%';
+  $('inJa').textContent=it.ja;
+  $('inAns').classList.remove('show');
+  $('inSelfRow').style.display='none';
+  $('inNext').style.display='none'; $('inPass').style.display='block';
+  $('inStatus').className='inst-status';
+  $('inStatus').textContent='6秒で英語にしよう…';
+  const t0=Date.now(), thinkMs=6000;
+  $('inCd').style.width='100%';
+  IN.timer=setInterval(()=>{
+    if(!$('instView').classList.contains('on')){ inClearTimer(); return; }
+    const left=thinkMs-(Date.now()-t0);
+    $('inCd').style.width=Math.max(0,left/thinkMs*100)+'%';
+    if(left<=0){ inClearTimer(); instSpeakPhase(); }
+  },100);
+}
+function instSpeakPhase(){
+  const it=IN.list[IN.idx];
+  IN.phase='speak';
+  if(recSupported()){
+    $('inStatus').className='inst-status rec';
+    $('inStatus').textContent='🎤 いま英語で言おう!';
+    const r=getRec(); autoRecObj=r;
+    let txt='', done=false, t0=0, t1=0;
+    const fin=()=>{ if(done) return; done=true; autoRecObj=null;
+      if(IN.phase!=='speak') return;
+      instJudge(txt, (t1>t0)?(t1-t0):0);
+    };
+    r.onresult=e=>{
+      if(!t0) t0=Date.now(); t1=Date.now();
+      for(let k=e.resultIndex;k<e.results.length;k++)
+        if(e.results[k].isFinal) txt+=e.results[k][0].transcript+' ';
+    };
+    r.onerror=()=>{};
+    r.onend=fin;
+    try{ r.start(); }catch(e){ fin(); }
+    setTimeout(()=>{ try{r.stop();}catch(e){} },10000);
+  }else{
+    // マイクなし:声に出して言ってから、自己判定
+    $('inStatus').textContent='声に出して言ってみよう(答えを見て自己チェック)';
+    instReveal('', 0, null);
+    $('inSelfRow').style.display='flex';
+    $('inNext').style.display='none';
+  }
+}
+function instJudge(spokenText, durMs){
+  const it=IN.list[IN.idx];
+  const T=spokenTokens(it.en), S=spokenTokens(spokenText||'');
+  const hit=lcsHit(T,S);
+  const pct=T.length?Math.round(hit.filter(Boolean).length/T.length*100):0;
+  const right=pct>=70;
+  IN.answered=true;
+  if(right) IN.good++; else IN.wrong.push(it);
+  instReveal(spokenText, pct, right);
+}
+function instReveal(spokenText, pct, right){
+  const it=IN.list[IN.idx];
+  inClearTimer();
+  $('inStatus').className='inst-status';
+  $('inStatus').textContent='';
+  $('inCd').style.width='0%';
+  $('inAnsT').textContent = right==null ? '答え' : (right?`⭕ 言えた!(一致率 ${pct}%)`:`🔁 まだまだ(一致率 ${pct}%)`);
+  $('inAnsA').textContent = it.en;
+  $('inAnsB').textContent = spokenText ? '🎧 きこえた音声: “'+spokenText.trim()+'”' : '';
+  $('inAns').classList.add('show');
+  speak(it.en, null, 0.9);
+  $('inPass').style.display='none';
+  if(right!=null){ $('inNext').style.display='block'; }
+}
+$('inPass').onclick=()=>{
+  if(IN.answered) return;
+  inClearTimer(); stopAutoRec();
+  IN.phase='pass'; IN.answered=true;
+  IN.wrong.push(IN.list[IN.idx]);
+  instReveal('', 0, false);
+};
+$('inOk').onclick=()=>{ IN.good++; IN.idx++; drawInst(); };
+$('inNg').onclick=()=>{ IN.wrong.push(IN.list[IN.idx]); IN.idx++; drawInst(); };
+$('inNext').onclick=()=>{ IN.idx++; drawInst(); };
+
 /* ================= かんたん宿題作成 ================= */
 const HWZ={type:'', target:'', due:'', min:'10'};
 const HWTYPES=[
-  {t:'音読', src:'passage'}, {t:'ディクテーション', src:'both'},
+  {t:'音読', src:'passage'}, {t:'瞬間英作文', src:'passage'}, {t:'ディクテーション', src:'both'},
   {t:'問題', src:'qset'}, {t:'テスト', src:'qset'},
   {t:'4択', src:'cset'}, {t:'カード', src:'cset'}, {t:'スペル', src:'cset'}, {t:'並べかえ', src:'cset'}
 ];
@@ -1636,6 +1819,7 @@ $('resRetry').onclick=()=>{
     startQDrill(p.setName, p.weakOnly, p.task, null);
   }
   else if(lastDrill.mode==='ディクテーション'){ startDict(lastDrill.items, lastDrill.title, lastDrill.task); }
+  else if(lastDrill.mode==='瞬間英作文'){ startInstant(lastDrill.items, lastDrill.title, lastDrill.task); }
   else startDrill(lastDrill.mode, lastDrill.cards, lastDrill.task);
 };
 $('resRetryWrong').onclick=()=>{
@@ -1655,7 +1839,9 @@ let shOn=false, shMic=true, shIdx=0;
 let autoRecObj=null;
 
 function openPassage(p, task){
-  curP=p; currentTask=task||null; oralScores={};
+  curP=p; currentTask=task||null; oralScores={}; oralWpm={};
+  Object.values(cbRecs).forEach(u=>{ try{URL.revokeObjectURL(u);}catch(e){} });
+  cbRecs={}; cbIdx=-1;
   const jpList=p.translation?p.translation.split('/').map(s=>s.trim()):[];
   sents=parseLines(p.text, jpList);
   $('rTitle').textContent=p.title;
@@ -1667,7 +1853,7 @@ function openPassage(p, task){
       ${s.spk?`<span class="spk">${esc(s.spk)}</span>`:''}
       <p class="en">${s.words.map((w,j)=>`<span class="w" data-j="${j}">${esc(w)}</span>`).join(' ')}</p>
       <button class="play1">▶</button>
-      <p class="score"></p><p class="jp">${esc(s.jp)}</p>
+      <p class="score"></p><p class="heard"></p><p class="jp">${esc(s.jp)}</p>
     </div>`).join('');
   $('sents').querySelectorAll('.sent').forEach(el=>{
     const i=+el.dataset.i;
@@ -1675,11 +1861,12 @@ function openPassage(p, task){
     el.querySelectorAll('.w').forEach(w=>{
       w.onclick=e=>{ e.stopPropagation();
         if(mode==='read'){ pick(i); return; }
+        if(mode==='cb'){ cbPick(i); return; }
         if(mode!=='listen') return;
         if(w.classList.contains('mask')){ w.classList.remove('mask'); speak(norm(w.textContent)||w.textContent); return; }
         stopAll(); speak(norm(w.textContent)||w.textContent); };
     });
-    el.onclick=()=>{ if(mode==='read') pick(i); else if(mode==='listen') playOne(i); };
+    el.onclick=()=>{ if(mode==='read') pick(i); else if(mode==='cb') cbPick(i); else if(mode==='listen') playOne(i); };
   });
   applyMask();
   $('submitRow').style.display=currentTask?'flex':'none';
@@ -1726,7 +1913,7 @@ function stopAll(){
   playing=false; playIdx=-1; synth.cancel(); markSent(-1);
   $('playBtn').textContent='▶ さいしょから再生'; $('playBtn').classList.remove('stop');
 }
-function stopEverything(){ stopAll(); stopRec(); stopSeq(); }
+function stopEverything(){ stopAll(); stopRec(); stopSeq(); if(typeof cbStop==='function') cbStop(); }
 $('playBtn').onclick=()=>{ playing?stopAll():playAll(); };
 $('repBtn').onclick=()=>{ repeatOn=!repeatOn; $('repBtn').classList.toggle('on',repeatOn); };
 $('jpBtn').onclick=()=>{ document.body.classList.toggle('show-jp'); $('jpBtn').classList.toggle('on'); };
@@ -1759,23 +1946,90 @@ function applyMask(){
 
 /* ---- タブ切替 ---- */
 function setReadMode(m){
-  mode=m; stopEverything();
-  [['tabListen','listen'],['tabRead','read'],['tabRp','rp'],['tabSh','sh']].forEach(([id,k])=>{
+  mode=m; stopEverything(); cbStop();
+  [['tabListen','listen'],['tabRead','read'],['tabCb','cb'],['tabRp','rp'],['tabSh','sh']].forEach(([id,k])=>{
     $(id).classList.toggle('on',m===k);
   });
   $('listenPane').style.display=m==='listen'?'block':'none';
   $('recPane').style.display=m==='read'?'block':'none';
+  $('cbPane').style.display=m==='cb'?'block':'none';
   $('rpPane').style.display=m==='rp'?'block':'none';
   $('shPane').style.display=m==='sh'?'block':'none';
   if(m==='listen'){ unpick(); $('hint').textContent='文をタップすると読み上げ。単語をタップするとその単語だけ発音します。'; }
   else if(m==='read'){ setScope(oralScope); }
+  else if(m==='cb'){ unpick(); cbUpdate(); $('hint').textContent='くらべ聞き:文をタップ→録音→「お手本→自分の声」で聞きくらべ。thやr/lの音のちがいを耳でチェックしよう。'; }
   else if(m==='rp'){ renderRoles(); $('hint').textContent='自分の役をえらんでスタート。自分の番は紫の線が付いた文を読もう。'; }
   else if(m==='sh'){ $('hint').textContent='お手本の直後にまねして読もう。'+(recSupported()?'採点ありだと自動でマイクが入ります。':''); }
 }
 $('tabListen').onclick=()=>setReadMode('listen');
 $('tabRead').onclick=()=>setReadMode('read');
+$('tabCb').onclick=()=>setReadMode('cb');
 $('tabRp').onclick=()=>setReadMode('rp');
 $('tabSh').onclick=()=>setReadMode('sh');
+
+/* ---- くらべ聞き:お手本 ⇄ 自分の声 ---- */
+let cbIdx=-1, cbRecs={}, cbRec=null, cbAudio=null;
+function cbPick(i){
+  cbIdx=i;
+  $('sents').querySelectorAll('.sent').forEach(el=>el.classList.toggle('picked',+el.dataset.i===i));
+  cbUpdate();
+}
+function cbUpdate(){
+  $('cbRecBtn').disabled = cbIdx<0;
+  $('cbPlayBtn').disabled = !(cbIdx>=0 && cbRecs[cbIdx]);
+  $('cbNote').textContent = cbIdx<0
+    ? '文をタップしてえらび、録音。そのあと「お手本 → 自分の声」を聞きくらべよう(耳で発音チェック)。'
+    : (cbRecs[cbIdx] ? '✓ 録音ずみ。「🎧 くらべ再生」で聞きくらべ。録りなおしもOK。'
+       : 'えらんだ文: “'+sents[cbIdx].en.slice(0,36)+'…”。録音ボタンで読んでみよう。');
+}
+$('cbRecBtn').onclick=()=>{
+  if(cbRec && cbRec.state==='recording'){ cbRec.stop(); return; }
+  if(cbIdx<0) return;
+  if(!navigator.mediaDevices||!window.MediaRecorder){ toast('この端末では録音ができません'); return; }
+  stopAll(); cbStop();
+  navigator.mediaDevices.getUserMedia({audio:true}).then(stream=>{
+    let mime='';
+    if(MediaRecorder.isTypeSupported){
+      if(MediaRecorder.isTypeSupported('audio/mp4')) mime='audio/mp4';
+      else if(MediaRecorder.isTypeSupported('audio/webm')) mime='audio/webm';
+    }
+    const chunks=[]; const idx=cbIdx;
+    cbRec=mime?new MediaRecorder(stream,{mimeType:mime}):new MediaRecorder(stream);
+    cbRec.ondataavailable=e=>{ if(e.data&&e.data.size) chunks.push(e.data); };
+    cbRec.onstop=()=>{
+      stream.getTracks().forEach(t=>t.stop());
+      $('cbRecBtn').textContent='⏺ 自分の声を録音';
+      const blob=new Blob(chunks,{type:cbRec.mimeType||mime||'audio/mp4'});
+      cbRec=null;
+      if(blob.size<1500){ toast('録音が短すぎます'); cbUpdate(); return; }
+      if(cbRecs[idx]) URL.revokeObjectURL(cbRecs[idx]);
+      cbRecs[idx]=URL.createObjectURL(blob);
+      cbUpdate();
+      cbCompare(); // 録音後すぐ聞きくらべ
+    };
+    cbRec.start();
+    speak('', null); synth.cancel();
+    $('cbRecBtn').textContent='■ 録音中… おして終了';
+    toast('録音中:文を読んだらもう一度ボタン',2000);
+  }).catch(()=>toast('マイクを使えませんでした。許可を確認してください',3000));
+};
+$('cbPlayBtn').onclick=()=>cbCompare();
+function cbCompare(){
+  if(cbIdx<0 || !cbRecs[cbIdx]) return;
+  cbStop(); markSent(cbIdx);
+  toast('🔊 お手本 → 🎧 自分の声',1800);
+  speak(sents[cbIdx].en, ()=>{
+    setTimeout(()=>{
+      cbAudio=new Audio(cbRecs[cbIdx]);
+      cbAudio.onended=()=>{ markSent(-1); };
+      cbAudio.play().catch(()=>toast('再生できませんでした'));
+    }, 500);
+  });
+}
+function cbStop(){
+  if(cbAudio){ try{cbAudio.pause();}catch(e){} cbAudio=null; }
+  if(cbRec){ try{cbRec.stop();}catch(e){} }
+}
 
 /* ---- 音読チェック ---- */
 $('scopeSent').onclick=()=>setScope('sent');
@@ -1809,17 +2063,31 @@ function unpick(){
   $('micBtn').disabled=true;
   $('recNote').textContent='読みたい文をタップしてから、マイクをおして英語で読もう。';
 }
+function clearSentMarks(i){
+  const sel = i==null ? '.sent' : `.sent[data-i="${i}"]`;
+  $('sents').querySelectorAll(sel).forEach(el=>{
+    el.querySelectorAll('.w').forEach(w=>w.classList.remove('ok','miss'));
+    const sc=el.querySelector('.score'); sc.classList.remove('show'); sc.textContent='';
+    const hd=el.querySelector('.heard'); hd.classList.remove('show'); hd.textContent='';
+  });
+  if(i==null){ $('heardAll').classList.remove('show'); $('heardAll').innerHTML=''; }
+}
 function startRec(){
   if(oralScope==='sent'&&pickedIdx<0) return;
   if(!recSupported()){ toast('この端末・ブラウザでは音声認識が使えません(Safari推奨)'); return; }
   stopAll();
+  // 前回の採点表示をリセットしてから録音
+  if(oralScope==='sent') clearSentMarks(pickedIdx); else clearSentMarks(null);
   recWant=true;
   let finalText='';
   let restarts=0;
+  let t0=0, t1=0; // 話し始め〜話し終わり(なめらかさ計測用)
   const spin=()=>{
     rec=getRec();
     rec.continuous=(oralScope==='all');
     rec.onresult=e=>{
+      if(!t0) t0=Date.now();
+      t1=Date.now();
       let interim='';
       for(let i=e.resultIndex;i<e.results.length;i++){
         if(e.results[i].isFinal) finalText+=e.results[i][0].transcript+' ';
@@ -1844,8 +2112,9 @@ function startRec(){
       }
       recOn=false; recWant=false; updateMic();
       if(!finalText.trim()) return;
-      if(oralScope==='all') gradeAll(finalText);
-      else if(pickedIdx>=0) grade(pickedIdx, finalText);
+      const dur=(t1>t0)?(t1-t0):0;
+      if(oralScope==='all') gradeAll(finalText, dur);
+      else if(pickedIdx>=0) grade(pickedIdx, finalText, dur);
     };
     try{ rec.start(); recOn=true; updateMic(); }
     catch(err){ recWant=false; recOn=false; updateMic(); toast('マイクを起動できませんでした'); }
@@ -1866,8 +2135,7 @@ function updateMic(){
 $('micBtn').onclick=()=>{ recOn?stopRec():startRec(); };
 $('clearBtn').onclick=()=>{
   $('interim').textContent='';
-  $('sents').querySelectorAll('.w').forEach(w=>w.classList.remove('ok','miss'));
-  $('sents').querySelectorAll('.score').forEach(s=>{ s.classList.remove('show'); s.textContent=''; });
+  clearSentMarks(null);
   oralScores={}; updateSubmit();
 };
 
@@ -1886,7 +2154,20 @@ function applySent(i, wordHas, wordOk, pct){
   if(!(i in oralScores)||pct>oralScores[i]) oralScores[i]=pct;
   updateBest();
 }
-function grade(i, spokenText){
+/* なめらかさ:読む速さ(語/分)。単語読み(ブツ切り)は遅くなるのでここで差がつく */
+let oralWpm={};
+function wpmOf(spokenText, durMs){
+  if(!durMs || durMs<400) return 0;
+  const n=String(spokenText).trim().split(/\s+/).filter(Boolean).length;
+  return Math.round(n/(durMs/60000));
+}
+function wpmStars(wpm){
+  if(!wpm) return '';
+  if(wpm>=95) return '⚡なめらかさ ★★★('+wpm+'語/分)';
+  if(wpm>=65) return '⚡なめらかさ ★★☆('+wpm+'語/分)';
+  return '⚡なめらかさ ★☆☆('+wpm+'語/分)— 単語を切らずに、つなげて読んでみよう';
+}
+function grade(i, spokenText, durMs){
   const flatT=[], mapT=[];
   sents[i].words.forEach((w,j)=>{ tokensOf(w).forEach(t=>{ flatT.push(t); mapT.push(j); }); });
   const hit=lcsHit(flatT, spokenTokens(spokenText));
@@ -1895,9 +2176,19 @@ function grade(i, spokenText){
   const wordOk=new Array(sents[i].words.length).fill(true);
   flatT.forEach((t,k)=>{ wordHas[mapT[k]]++; if(!hit[k]) wordOk[mapT[k]]=false; });
   applySent(i, wordHas, wordOk, pct);
+  const el=$('sents').querySelector(`.sent[data-i="${i}"]`);
+  const wpm=wpmOf(spokenText, durMs);
+  if(wpm){
+    oralWpm[i]=wpm;
+    const sc=el.querySelector('.score');
+    sc.textContent += ' ・ '+wpmStars(wpm);
+  }
+  const hd=el.querySelector('.heard');
+  hd.textContent='🎧 きこえた音声: “'+spokenText.trim()+'”';
+  hd.classList.add('show');
   updateSubmit();
 }
-function gradeAll(spokenText){
+function gradeAll(spokenText, durMs){
   const flatT=[], mapT=[];
   sents.forEach((s,i)=>s.words.forEach((w,j)=>{ tokensOf(w).forEach(t=>{ flatT.push(t); mapT.push([i,j]); }); }));
   const hit=lcsHit(flatT, spokenTokens(spokenText));
@@ -1909,7 +2200,12 @@ function gradeAll(spokenText){
   });
   per.forEach((p,i)=>{ applySent(i, p.has, p.ok, p.tok?Math.round(p.good/p.tok*100):0); });
   const total=flatT.length, good=hit.filter(Boolean).length;
-  toast(`全文の一致率 ${total?Math.round(good/total*100):0}%(文ごとの結果は本文を見てね)`,3200);
+  const wpm=wpmOf(spokenText, durMs);
+  if(wpm) oralWpm['all']=wpm;
+  $('heardAll').innerHTML='🎧 <b>きこえた音声(通し読み)</b>:<br>“'+esc(spokenText.trim())+'”'
+    +(wpm?('<br>'+esc(wpmStars(wpm))):'');
+  $('heardAll').classList.add('show');
+  toast(`全文の一致率 ${total?Math.round(good/total*100):0}%`+(wpm?` ・ ${wpm}語/分`:''),3200);
   updateSubmit();
 }
 function oralAvg(){
@@ -1934,9 +2230,12 @@ $('submitBtn').onclick=()=>{
   const keys=Object.keys(oralScores);
   if(!keys.length) return;
   const avg=oralAvg();
+  const wk=Object.values(oralWpm).filter(Boolean);
+  const wAvg=wk.length?Math.round(wk.reduce((s,x)=>s+x,0)/wk.length):0;
   $('submitBtn').disabled=true;
-  save('音読', curP.title, avg, `${keys.length}/${sents.length}文・平均${avg}%`, ok=>{
-    if(ok){ toast('✓ 提出しました(平均 '+avg+'%)',3000); currentTask=null;
+  save('音読', curP.title, avg,
+    `${keys.length}/${sents.length}文・平均${avg}%`+(wAvg?`・${wAvg}語/分`:''), ok=>{
+    if(ok){ toast('✓ 提出しました(平均 '+avg+'%'+(wAvg?'・'+wAvg+'語/分':'')+')',3000); currentTask=null;
       setTimeout(()=>{ show('homeView'); renderRead(); },1200); }
     else $('submitBtn').disabled=false;
   });
@@ -2040,10 +2339,14 @@ function shEnd(finished){
 function autoRecFor(i, done){
   const r=getRec();
   if(!r){ done(); return; }
+  clearSentMarks(i);
   autoRecObj=r;
-  let txt='', finished=false;
-  const fin=()=>{ if(finished) return; finished=true; autoRecObj=null; if(txt.trim()) grade(i, txt); done(); };
+  let txt='', finished=false, t0=0, t1=0;
+  const fin=()=>{ if(finished) return; finished=true; autoRecObj=null;
+    if(txt.trim()) grade(i, txt, (t1>t0)?(t1-t0):0); done(); };
   r.onresult=e=>{
+    if(!t0) t0=Date.now();
+    t1=Date.now();
     for(let k=e.resultIndex;k<e.results.length;k++)
       if(e.results[k].isFinal) txt+=e.results[k][0].transcript+' ';
   };
@@ -2114,24 +2417,61 @@ function uploadAudio(blob){
 /* ================= 教員モード ================= */
 const TKEY=(()=>{ try{ return new URLSearchParams(location.search).get('t')||''; }catch(e){ return ''; } })();
 const SCHEMA={
-  '教材':[['タイトル'],['レベル(初級/中級/上級)'],['カテゴリ'],['英文(改行で行分け。「Boy: Hi.」形式で話者ラベル)','ta'],['日本語訳(「/」区切りで文ごと対応・任意)','ta'],['リンク(任意・教科書QRコンテンツ等のURL。生徒の本文画面にボタン表示)']],
-  '単語帳':[['英語'],['意味'],['種別(単語/熟語)'],['レベル'],['例文(並べかえに使用・任意)','ta'],['セット名']],
-  '宿題':[['課題名'],['タイプ(カード・4択・スペル・並べかえ・音読・問題・テスト・ディクテーション)'],['対象(セット名・教材タイトル・問題セット名)'],['締切(例 2026/09/01)'],['メモ(テストは「10分」等で制限時間)']],
+  '教材':[['タイトル'],['レベル','sel'],['カテゴリ'],['英文(改行で行分け。「Boy: Hi.」形式で話者ラベル)','ta'],['日本語訳(「/」区切りで文ごと対応・任意)','ta'],['リンク(任意・教科書QRコンテンツ等のURL。生徒の本文画面にボタン表示)']],
+  '単語帳':[['英語'],['意味'],['種別','sel'],['レベル','sel'],['例文(並べかえに使用・任意)','ta'],['セット名','sel']],
+  '宿題':[['課題名'],['タイプ','sel'],['対象','sel'],['締切','sel'],['メモ(テストは「10分」等で制限時間)']],
   '名簿':[['クラス(例 1-2)'],['出席番号'],['名前'],['PIN(任意・なりすまし防止)']],
-  '問題集':[['問題文(穴埋めは ___ を入れる/整序は日本語)','ta'],['選択肢A(4択のみ)'],['選択肢B'],['選択肢C'],['選択肢D'],['正解(4択=正解の選択肢と同じ文字列)'],['解説','ta'],['形式(4択・穴埋め・整序)'],['ジャンル(単語・熟語・文法)'],['セット名(例 Unit 1)']]
+  '問題集':[['問題文(穴埋めは ___ を入れる/整序は日本語)','ta'],['選択肢A(4択のみ)'],['選択肢B'],['選択肢C'],['選択肢D'],['正解(4択=正解の選択肢と同じ文字列)'],['解説','ta'],['形式','sel'],['ジャンル','sel'],['セット名','sel']]
 };
+/* 選択式フィールドの選択肢(スプレッドシートの内容から自動生成) */
+function selOptions(sheet, idx){
+  const cardSets=[...new Set(DATA.cards.map(c=>c.set))];
+  const qSets=[...new Set((DATA.questions||[]).map(q=>q.set))];
+  const dueOpts=[1,3,7,14].map(d=>{
+    const x=new Date(Date.now()+d*864e5);
+    return x.getFullYear()+'/'+(x.getMonth()+1)+'/'+x.getDate();
+  });
+  if(sheet==='教材' && idx===1) return ['初級','中級','上級'];
+  if(sheet==='単語帳'){
+    if(idx===2) return ['単語','熟語'];
+    if(idx===3) return ['初級','中級','上級'];
+    if(idx===5) return cardSets;
+  }
+  if(sheet==='宿題'){
+    if(idx===1) return HWTYPES.map(x=>x.t);
+    if(idx===2) return [...new Set([...DATA.passages.map(p=>p.title), ...cardSets, ...qSets])];
+    if(idx===3) return dueOpts;
+  }
+  if(sheet==='問題集'){
+    if(idx===7) return ['4択','穴埋め','整序'];
+    if(idx===8) return ['単語','熟語','文法'];
+    if(idx===9) return qSets;
+  }
+  return null;
+}
 let tSheet='ダッシュボード', tRow=-1;
 function initTeacher(){
   if(!TKEY) return;
+  const tabs=$('homeTabs');
+  // 生徒用タブは教員画面には出さない(生徒画面は別タブで開く)
+  tabs.querySelectorAll('button[data-t]').forEach(b=>b.style.display='none');
+  $('nameChip').style.display='none';
   const tb=document.createElement('button');
-  tb.textContent='⚙ 教員';
-  tb.onclick=()=>{
-    document.querySelectorAll('#homeTabs button').forEach(x=>x.classList.toggle('on',x===tb));
-    document.querySelectorAll('.pane').forEach(p=>p.classList.remove('on'));
-    $('pane-teacher').classList.add('on');
-    renderTeacher();
+  tb.textContent='⚙ ダッシュボード';
+  tb.className='on';
+  tb.onclick=()=>{ renderTeacher(); };
+  tabs.appendChild(tb);
+  const st=document.createElement('button');
+  st.textContent='🔗 生徒画面を開く';
+  st.onclick=()=>{
+    const w=window.open(location.origin+location.pathname, '_blank');
+    if(!w) toast('ポップアップがブロックされました');
   };
-  $('homeTabs').appendChild(tb);
+  tabs.appendChild(st);
+  document.querySelectorAll('.pane').forEach(p=>p.classList.remove('on'));
+  $('pane-teacher').classList.add('on');
+  $('pane-teacher').innerHTML='<div class="loading">読みこみ中…</div>';
+  document.querySelector('#homeView header h1').textContent='英語れんしゅう 📋 管理';
 }
 function tData(){
   if(tSheet==='教材') return DATA.passages.map(p=>({id:p.id, v:[p.title,p.level,p.category,p.text,p.translation,p.link||'']}));
@@ -2148,7 +2488,7 @@ function renderTeacher(){
   const tabs=['ダッシュボード','教材','単語帳','宿題','問題集','名簿'];
   let html='<div class="chips">'+tabs.map(s=>`<button class="chip ${s===tSheet?'on':''}" data-s="${s}">${s}</button>`).join('')+'</div>';
   if(tSheet==='ダッシュボード'){
-    html+='<button class="big sub" id="hwWizBtn" style="width:100%; margin-bottom:14px">📌 かんたん宿題作成(3タップ)</button>';
+    if(!tStudent) html+='<button class="big sub" id="hwWizBtn" style="width:100%; margin-bottom:14px">📌 かんたん宿題作成(3タップ)</button>';
     html+=renderDash();
   }else{
     html+='<button class="big" id="tAdd" style="width:100%; margin-bottom:12px">＋ '+tSheet+'を追加</button>';
@@ -2187,17 +2527,48 @@ function renderTeacher(){
   if(cp) cp.onclick=copyRecords;
   const hz=el.querySelector('#hwWizBtn');
   if(hz) hz.onclick=openHwWizard;
+  el.querySelectorAll('.stlink').forEach(b=>{
+    b.onclick=e=>{ e.stopPropagation(); tStudent=b.dataset.n; renderTeacher(); window.scrollTo(0,0); };
+  });
+  const sb=el.querySelector('#stBack');
+  if(sb) sb.onclick=()=>{ tStudent=null; renderTeacher(); };
   el.querySelectorAll('.hwquick').forEach(b=>{
     b.onclick=e=>{ e.stopPropagation(); quickHomework(b.dataset.type, b.dataset.target); };
   });
 }
-/* ダッシュボード:提出率・未提出者・要フォロー・間違いランキング */
+/* ダッシュボード:今日の状況・提出率・個人カルテ・分析 */
+let tStudent=null;
+function pad2(n){ return String(n).padStart(2,'0'); }
+function dstr(d){ return d.getFullYear()+'/'+pad2(d.getMonth()+1)+'/'+pad2(d.getDate()); }
 function renderDash(){
-  const recs=DATA.allRecords||[];
+  const recs=(DATA.allRecords||[]).filter(r=>r.name!=='先生'&&!/^先生/.test(r.name));
+  if(tStudent) return renderStudent(tStudent, recs);
   let html='';
   if(!recs.length && !(DATA.roster&&DATA.roster.length))
     html+='<p class="thelp">※ データが見えない場合は、URLの ?t= が「設定」シートのパスコードと一致しているか確認してください。</p>';
-  // 課題ごとの提出状況
+
+  /* ---- 今日の状況 ---- */
+  html+='<div class="dash-sec">🔔 今日の状況</div>';
+  const todayS=dstr(new Date()), tomS=dstr(new Date(Date.now()+864e5));
+  const rosterN=(DATA.roster&&DATA.roster.length)||0;
+  const alerts=DATA.homework.filter(h=>h.due===todayS||h.due===tomS).map(h=>{
+    const latest={}; recs.filter(r=>r.task===h.task).forEach(r=>latest[r.name]=r);
+    const missN=rosterN?DATA.roster.map(s=>s.display).filter(d=>!latest[d]).length:'?';
+    return `<div class="alertcard">⏰ <b>${h.due===todayS?'今日':'明日'}締切</b>「${esc(h.task)}」— 未提出 <b>${missN}</b>${rosterN?'/'+rosterN:''}名</div>`;
+  }).join('');
+  html+=alerts||'<div class="followline" style="color:var(--ink-soft)">直近の締切はありません</div>';
+  if(DATA.activeToday!=null)
+    html+=`<div class="followline">📱 アプリを使った生徒: 今日 <b>${DATA.activeToday}</b>名 ・ 昨日 <b>${DATA.activeYest}</b>名${rosterN?' / '+rosterN+'名':''}</div>`;
+  const feed=recs.slice(-12).reverse();
+  if(feed.length){
+    html+='<div class="dash-sec">📥 新着提出</div>';
+    html+=feed.map(r=>{
+      const au=(r.detail||'').match(/音声: (https:\/\/\S+)/);
+      return `<div class="feedline">${esc(r.time||r.date)} <button class="stlink" data-n="${escA(r.name)}">${esc(r.name)}</button> — ${esc(r.task)} <b>${r.score}%</b>(${esc(r.type)})${au?` <a href="${escA(au[1])}" target="_blank" style="color:var(--purple); font-weight:700">▶</a>`:''}</div>`;
+    }).join('');
+  }
+
+  /* ---- 課題の提出状況 ---- */
   html+='<div class="dash-sec">📌 課題の提出状況</div>';
   if(!DATA.homework.length) html+='<div class="empty" style="padding:16px">宿題がありません</div>';
   DATA.homework.forEach(h=>{
@@ -2218,7 +2589,7 @@ function renderDash(){
       ${subs.map(n=>{
         const r=latest[n];
         const au=(r.detail||'').match(/音声: (https:\/\/\S+)/);
-        return `<div class="line">${esc(n)} — <b>${r.score}%</b> <span style="color:var(--ink-soft); font-size:12.5px">(${esc(r.type)} ${esc(r.date)})</span>${au?` <a href="${escA(au[1])}" target="_blank" style="color:var(--purple); font-weight:700">▶ 音声</a>`:''}</div>`;
+        return `<div class="line"><button class="stlink" data-n="${escA(n)}">${esc(n)}</button> — <b>${r.score}%</b> <span style="color:var(--ink-soft); font-size:12.5px">(${esc(r.type)} ${esc(r.date)})</span>${au?` <a href="${escA(au[1])}" target="_blank" style="color:var(--purple); font-weight:700">▶ 音声</a>`:''}</div>`;
       }).join('')}
       ${missHtml}
     </div>`;
@@ -2231,7 +2602,7 @@ function renderDash(){
     .filter(x=>x.avg<70).sort((a,b)=>a.avg-b.avg);
   html+='<div class="dash-sec">🚨 要フォロー(平均70%未満)</div>';
   html+=follow.length
-    ? follow.map(f=>`<div class="followline">${esc(f.n)} — 平均 <b style="color:var(--miss)">${f.avg}%</b>(${f.c}回)</div>`).join('')
+    ? follow.map(f=>`<div class="followline"><button class="stlink" data-n="${escA(f.n)}">${esc(f.n)}</button> — 平均 <b style="color:var(--miss)">${f.avg}%</b>(${f.c}回)</div>`).join('')
     : '<div class="followline" style="color:var(--ink-soft)">いまのところ、いません 🎉</div>';
   // 間違いランキング
   const agg=DATA.wrongAgg||{};
@@ -2247,6 +2618,59 @@ function renderDash(){
   html+='<button class="copybtn" id="copyTSV">📋 提出記録をコピー(Excel貼り付け用)</button>';
   return html;
 }
+/* ---- 個人カルテ ---- */
+function renderStudent(name, recs){
+  const my=recs.filter(r=>r.name===name);
+  let html=`<button class="chip" id="stBack">‹ ダッシュボードへ</button>
+    <div class="dash-sec" style="font-size:18px">👤 ${esc(name)} の学習カルテ</div>`;
+  const avg=my.length?Math.round(my.reduce((s,r)=>s+r.score,0)/my.length):0;
+  html+=`<div class="followline">提出 <b>${my.length}</b>回 ・ 平均 <b>${avg}%</b></div>`;
+  // スコア推移(SVG折れ線)
+  if(my.length>=2){
+    const vals=my.slice(-20).map(r=>r.score);
+    const pts=vals.map((v,i)=>((i/(vals.length-1))*280+10)+','+(78-(v/100)*64));
+    html+=`<div class="dash-sec">📈 スコア推移(直近${vals.length}回)</div>
+      <svg viewBox="0 0 300 90" style="width:100%; max-width:440px; background:var(--card); border:1px solid var(--line); border-radius:12px">
+        <line x1="10" y1="14" x2="290" y2="14" stroke="#E1E6E3" stroke-dasharray="3"/>
+        <line x1="10" y1="46" x2="290" y2="46" stroke="#E1E6E3" stroke-dasharray="3"/>
+        <text x="292" y="17" font-size="8" fill="#8A97A0">100</text>
+        <text x="292" y="49" font-size="8" fill="#8A97A0">50</text>
+        <polyline points="${pts.join(' ')}" fill="none" stroke="#0E7568" stroke-width="2.5" stroke-linejoin="round"/>
+        ${vals.map((v,i)=>`<circle cx="${(i/(vals.length-1))*280+10}" cy="${78-(v/100)*64}" r="3" fill="${v>=70?'#0E7568':'#C6483E'}"/>`).join('')}
+      </svg>`;
+  }
+  // 学習カレンダー(直近28日)
+  const byDay={};
+  my.forEach(r=>{ byDay[r.date]=(byDay[r.date]||0)+1; });
+  let heat='';
+  for(let d=27; d>=0; d--){
+    const ds=dstr(new Date(Date.now()-d*864e5));
+    const c=byDay[ds]||0;
+    heat+=`<i class="${c>=2?'h2':c===1?'h1':''}" title="${ds}: ${c}回"></i>`;
+  }
+  html+=`<div class="dash-sec">🗓 学習カレンダー(直近28日・色=提出あり)</div><div class="heat">${heat}</div>`;
+  // にがて問題(習熟データから)
+  try{
+    const md=JSON.parse((DATA.masteryAll||{})[name]||'{}');
+    const weak=Object.keys(md).filter(k=>(md[k].w||0)>0 && (md[k].b??1)<=1)
+      .sort((a,b)=>(md[b].w||0)-(md[a].w||0)).slice(0,8);
+    html+='<div class="dash-sec">📉 この生徒のにがて問題</div>';
+    html+=weak.length
+      ? weak.map(k=>{
+          const q=(DATA.questions||[]).find(x=>qKey(x)===k);
+          return `<div class="rankline"><b>${md[k].w}回</b>ミス — ${esc(q?q.q.replace(/\s+/g,' ').slice(0,46):k)}</div>`;
+        }).join('')
+      : '<div class="followline" style="color:var(--ink-soft)">にがて問題はありません(または未学習)</div>';
+  }catch(e){}
+  // 提出履歴
+  html+='<div class="dash-sec">📄 提出履歴</div>';
+  html+=my.slice().reverse().map(r=>{
+    const au=(r.detail||'').match(/音声: (https:\/\/\S+)/);
+    return `<div class="feedline">${esc(r.time||r.date)} ${esc(r.task)} — <b>${r.score}%</b>(${esc(r.type)})${au?` <a href="${escA(au[1])}" target="_blank" style="color:var(--purple); font-weight:700">▶ 音声</a>`:''}<br><span style="font-size:12px">${esc((r.detail||'').replace(/音声: https:\/\/\S+/,''))}</span></div>`;
+  }).join('')||'<div class="followline" style="color:var(--ink-soft)">まだ提出がありません</div>';
+  return html;
+}
+
 function copyRecords(){
   const recs=DATA.allRecords||[];
   if(!recs.length){ toast('コピーする記録がありません'); return; }
@@ -2352,12 +2776,21 @@ function openEdit(row, preset){
   $('tHelp').textContent=
     tSheet==='教材'?'会話文は1行ずつ改行し、「Meg: Yes, I do.」のように書くと話者名は採点対象外になります。':
     tSheet==='名簿'?'PINを空欄で保存すると、その生徒のPINは未設定(またはシート上の値のまま)になります。PIN管理はシート推奨。':'';
-  $('tFields').innerHTML=sch.map((f,i)=>
-    `<div class="field"><label>${esc(f[0])}</label>`+
-    (f[1]==='ta'
-      ?`<textarea data-i="${i}">${esc(String(cur[i]||''))}</textarea>`
-      :`<input data-i="${i}" value="${escA(String(cur[i]||''))}">`)
-    +`</div>`).join('');
+  $('tFields').innerHTML=sch.map((f,i)=>{
+    const label=`<label>${esc(f[0])}</label>`;
+    if(f[1]==='ta')
+      return `<div class="field">${label}<textarea data-i="${i}">${esc(String(cur[i]||''))}</textarea></div>`;
+    if(f[1]==='sel'){
+      let opts=(selOptions(tSheet,i)||[]).slice();
+      const cv=String(cur[i]||'');
+      if(cv && !opts.includes(cv)) opts.unshift(cv);
+      if(!cv) opts.unshift('');
+      return `<div class="field">${label}<select data-i="${i}" style="width:100%; font-size:16px; padding:10px 12px; border:1.5px solid var(--line); border-radius:10px; background:var(--paper)">${
+        opts.map(o=>`<option value="${escA(o)}" ${o===cv?'selected':''}>${o?esc(o):'(えらんでください)'}</option>`).join('')
+      }</select></div>`;
+    }
+    return `<div class="field">${label}<input data-i="${i}" value="${escA(String(cur[i]||''))}"></div>`;
+  }).join('');
   $('tDel').style.display=row>=0?'block':'none';
   $('tEdit').classList.add('on');
 }
